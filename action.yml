@@ -1,0 +1,49 @@
+name: "Sentinel Warden"
+description: "Scan AI agent skills, MCP servers, and rules files for prompt injection, exfiltration, and tool poisoning."
+author: "Aaditya Parab"
+branding:
+  icon: "shield"
+  color: "purple"
+
+inputs:
+  path:
+    description: "Directory to scan"
+    required: false
+    default: "."
+  fail-on:
+    description: "Fail the job if a finding >= this severity is found (critical|high|medium|low|none)"
+    required: false
+    default: "high"
+  upload-sarif:
+    description: "Upload SARIF to GitHub code scanning"
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+
+    - name: Run Sentinel Warden
+      shell: bash
+      run: |
+        npx --yes sentinel-warden@latest scan "${{ inputs.path }}" \
+          --format sarif --output warden.sarif --fail-on "${{ inputs.fail-on }}" || echo "WARDEN_FAILED=1" >> "$GITHUB_ENV"
+        npx --yes sentinel-warden@latest scan "${{ inputs.path }}" --no-color || true
+
+    - name: Upload SARIF
+      if: ${{ inputs.upload-sarif == 'true' && hashFiles('warden.sarif') != '' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: warden.sarif
+
+    - name: Enforce gate
+      shell: bash
+      run: |
+        if [ "${WARDEN_FAILED:-0}" = "1" ]; then
+          echo "::error::Sentinel Warden found findings at or above the fail-on threshold."
+          exit 1
+        fi

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+.warden/
+*.sarif
+
+# Internal/process docs — kept local, not part of the public repo
+PUBLISH-PROMPT.md
+SHIP.md
+launch/
