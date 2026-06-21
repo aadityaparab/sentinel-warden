@@ -43,7 +43,7 @@
   "homepage": "https://github.com/aadityaparab/sentinel-warden",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aadityaparab/sentinel-warden.git"
+    "url": "git+https://github.com/aadityaparab/sentinel-warden.git"
   },
   "engines": {
     "node": ">=18"
