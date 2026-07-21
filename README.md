@@ -26,10 +26,10 @@ npx sentinel-warden scan ./skills
 
 Agent skills are a new, unguarded supply chain:
 
-- A 2026 audit found **prompt injection in 36% of agent skills** and over **1,400 malicious payloads** in the wild. ([Snyk, ToxicSkills](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/))
-- The **"ClawHavoc"** incident saw **341 malicious skills** published to a single registry. ([Snyk](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/))
-- If you installed a skill in the last month, there's roughly a **13% chance it carries a critical flaw**. ([The New Stack](https://thenewstack.io/ai-agent-skills-security/))
-- The core problem, in researchers' words: *"no mainstream security scanner has a detection category for malicious instructions embedded in agent skill definitions."* ([VentureBeat](https://venturebeat.com/security/one-command-open-source-repo-ai-agent-backdoor-openclaw-supply-chain-scanner))
+- A February 2026 audit of 3,984 published skills found **36.8% carry at least one security flaw**, and **13.4% (534 skills) carry a critical one** — malware, prompt injection or exposed secrets. ([Snyk, ToxicSkills](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/))
+- **84.2% of agent-skill vulnerabilities live in the `SKILL.md` prose.** Only 8.5% are in executable code — which is precisely why conventional code scanners miss them. ([arXiv 2602.06547](https://arxiv.org/pdf/2602.06547))
+- The **"ClawHavoc"** campaign flooded a single registry with **341 malicious skills in three days**, 335 of them from one coordinated operation, distributing credential stealers. ([Koi Security](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting))
+- Existing tools like Semgrep and Bandit are built for general application security and carry no patterns for agent-specific threats such as prompt injection or skill-instruction manipulation. ([arXiv 2602.06547](https://arxiv.org/pdf/2602.06547))
 
 A poisoned skill never triggers a CVE and never shows up in an SBOM. Warden is built for exactly this gap.
 
@@ -64,23 +64,41 @@ npx sentinel-warden scan ./skills
 
 # try the bundled examples
 npx sentinel-warden scan examples/malicious-skill
+
+# a skill that reads as clean, but smuggles zero-width characters
+npx sentinel-warden scan examples/hidden-unicode
 ```
+
+Bundled examples: `clean-skill` (passes), `malicious-skill`, `sketchy-mcp`,
+`cursor-rules`, and `hidden-unicode` — the last hides zero-width characters
+inside words so the keyword rules no longer match, while `WRD-TP-002` catches
+the evasion itself.
 
 ```
 sentinel-warden  v0.1.0  ·  ruleset 0.1.0
 scanned 1 agent artifact(s)
 
-examples/malicious-skill/SKILL.md
-   CRITICAL  WRD-PI-002 Conceal activity from the user  (line 18)
-   CRITICAL  WRD-TP-001 Hidden instructions inside a comment  (line 20)
+SKILL.md
+   CRITICAL  WRD-PI-002 Conceal activity from the user  (line 17)
    CRITICAL  WRD-EXF-001 Outbound send of data to an external endpoint  (line 14)
-   HIGH      WRD-EXF-002 Reads credential or secret stores  (line 13)
-   HIGH      WRD-RUG-001 Fetches instructions or code at runtime  (line 22)
+   CRITICAL  WRD-EXF-001 Outbound send of data to an external endpoint  (line 14)
+   CRITICAL  WRD-EXF-001 Outbound send of data to an external endpoint  (line 19)
+   CRITICAL  WRD-EXF-001 Outbound send of data to an external endpoint  (line 14)
+   CRITICAL  WRD-TP-001 Hidden instructions inside a comment  (line 19)
+   HIGH  WRD-PI-001 Instruction override  (line 8)
+   HIGH  WRD-EXF-002 Reads credential or secret stores  (line 3)
+   HIGH  WRD-EXF-002 Reads credential or secret stores  (line 13)
+   HIGH  WRD-RUG-001 Fetches instructions or code at runtime  (line 21)
+   HIGH  WRD-RUG-001 Fetches instructions or code at runtime  (line 21)
 
-5 finding(s): 3 critical, 2 high, 0 medium, 0 low
+11 finding(s): 6 critical, 5 high, 0 medium, 0 low
 risk score 100/100
 verdict:  BLOCK
 ```
+
+(Each finding also prints the matching snippet and a one-line fix; those are
+omitted above for brevity. A rule reports once per matching pattern, so a
+single line of a skill can raise several findings.)
 
 ---
 
